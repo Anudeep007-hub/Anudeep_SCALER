@@ -40,6 +40,8 @@ export function NewChatModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
     return () => clearTimeout(timer);
   }, [query, isOpen, searchUsers]);
 
+  const [creating, setCreating] = useState(false);
+
   async function handleSelect(user: User) {
     if (mode === "direct") {
       await createDirectChat(user.id);
@@ -54,12 +56,17 @@ export function NewChatModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
   }
 
   async function handleCreateGroup() {
-    if (!groupName.trim() || selectedUsers.length === 0) return;
-    await createGroup(
-      groupName.trim(),
-      selectedUsers.map((u) => u.id)
-    );
-    onClose();
+    if (!groupName.trim() || selectedUsers.length === 0 || creating) return;
+    setCreating(true);
+    try {
+      await createGroup(
+        groupName.trim(),
+        selectedUsers.map((u) => u.id)
+      );
+      onClose();
+    } finally {
+      setCreating(false);
+    }
   }
 
   return (
@@ -138,8 +145,8 @@ export function NewChatModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       {mode === "group" && (
         <div className="border-t border-[var(--border)] p-4 flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setMode("direct")}>Cancel</Button>
-          <Button onClick={handleCreateGroup} disabled={!groupName.trim() || selectedUsers.length === 0}>
-            Create
+          <Button onClick={handleCreateGroup} disabled={!groupName.trim() || selectedUsers.length === 0 || creating}>
+            {creating ? "Creating..." : "Create"}
           </Button>
         </div>
       )}

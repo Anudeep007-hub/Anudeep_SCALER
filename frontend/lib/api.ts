@@ -91,6 +91,18 @@ export const api = {
     );
   },
 
+  renameGroup(auth: AuthHeaders, conversationId: number, name: string) {
+    return request<Conversation>(`/api/groups/${conversationId}`, { method: "PATCH", body: JSON.stringify({ name }) }, auth);
+  },
+
+  addGroupMember(auth: AuthHeaders, conversationId: number, userId: number) {
+    return request<Conversation>(`/api/groups/${conversationId}/members`, { method: "POST", body: JSON.stringify({ user_id: userId }) }, auth);
+  },
+
+  removeGroupMember(auth: AuthHeaders, conversationId: number, userId: number) {
+    return request<Conversation>(`/api/groups/${conversationId}/members/${userId}`, { method: "DELETE" }, auth);
+  },
+
   markRead(auth: AuthHeaders, conversationId: number) {
     return request<Message[]>(`/api/conversations/${conversationId}/read`, { method: "POST" }, auth);
   },

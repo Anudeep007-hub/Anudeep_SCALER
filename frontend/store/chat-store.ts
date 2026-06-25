@@ -31,6 +31,9 @@ type ChatState = {
   uploadAttachment: (file: File) => Promise<{ url: string; contentType: string } | null>;
   createDirectChat: (userId: number) => Promise<void>;
   createGroup: (name: string, memberIds: number[]) => Promise<void>;
+  renameGroup: (conversationId: number, name: string) => Promise<void>;
+  addGroupMember: (conversationId: number, userId: number) => Promise<void>;
+  removeGroupMember: (conversationId: number, userId: number) => Promise<void>;
   searchUsers: (q: string) => Promise<User[]>;
   setReplyToMessage: (message: Message | null) => void;
   pushToast: (text: string, tone?: Toast["tone"]) => void;
@@ -271,6 +274,36 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } catch (error) {
       get().pushToast(error instanceof Error ? error.message : "Failed to create group", "error");
       set({ loading: false });
+    }
+  },
+
+  async renameGroup(conversationId, name) {
+    try {
+      await api.renameGroup(auth(get()), conversationId, name);
+      const conversations = sortConversations(await api.conversations(auth(get()), get().query));
+      set({ conversations });
+    } catch (error) {
+      get().pushToast(error instanceof Error ? error.message : "Failed to rename group", "error");
+    }
+  },
+
+  async addGroupMember(conversationId, userId) {
+    try {
+      await api.addGroupMember(auth(get()), conversationId, userId);
+      const conversations = sortConversations(await api.conversations(auth(get()), get().query));
+      set({ conversations });
+    } catch (error) {
+      get().pushToast(error instanceof Error ? error.message : "Failed to add member", "error");
+    }
+  },
+
+  async removeGroupMember(conversationId, userId) {
+    try {
+      await api.removeGroupMember(auth(get()), conversationId, userId);
+      const conversations = sortConversations(await api.conversations(auth(get()), get().query));
+      set({ conversations });
+    } catch (error) {
+      get().pushToast(error instanceof Error ? error.message : "Failed to remove member", "error");
     }
   },
 

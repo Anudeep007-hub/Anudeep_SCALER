@@ -1,3 +1,4 @@
+.next
 AI-Agent.txt 
 backend-flow.txt 
 phase.txt 
@@ -8,4 +9,5 @@ __pycache__
 node_modules 
 vir 
 .env 
-.env.example
+.env.example 
+

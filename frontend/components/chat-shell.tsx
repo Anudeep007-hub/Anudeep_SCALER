@@ -41,7 +41,7 @@ export function ChatShell() {
         <div className={activeConversationId ? "hidden md:block" : "block"}>
           <Sidebar />
         </div>
-        <section className={activeConversationId ? "flex min-w-0 flex-col bg-[var(--chat)]" : "hidden min-w-0 flex-col bg-[var(--chat)] md:flex"}>
+        <section className={activeConversationId ? "flex min-h-0 min-w-0 flex-col bg-[var(--chat)]" : "hidden min-h-0 min-w-0 flex-col bg-[var(--chat)] md:flex"}>
           {activeConversationId ? (
             <>
               <ChatHeader />
