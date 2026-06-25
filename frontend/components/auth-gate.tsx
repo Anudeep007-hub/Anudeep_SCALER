@@ -10,7 +10,7 @@ export function AuthGate() {
   const signIn = useChatStore((state) => state.signIn);
   const loading = useChatStore((state) => state.loading);
   const [displayName, setDisplayName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [username, setUsername] = useState("");
   const [error, setError] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -21,15 +21,15 @@ export function AuthGate() {
       return;
     }
     
-    const phoneRegex = /^\+?[0-9]{7,15}$/;
-    const cleanedPhone = phone.replace(/\s+/g, "");
-    if (!phoneRegex.test(cleanedPhone)) {
-      setError("Please enter a valid phone number (e.g., +1234567890).");
+    const cleanedUsername = username.trim().replace(/\s+/g, "");
+    if (cleanedUsername.length < 3) {
+      setError("Username must be at least 3 characters.");
       return;
     }
     
     setError("");
-    await signIn({ displayName, phone: cleanedPhone });
+    // We pass username as 'phone' because the backend requires the phone field
+    await signIn({ displayName, phone: cleanedUsername });
   }
 
   return (
@@ -40,7 +40,7 @@ export function AuthGate() {
             <MessageCircle size={32} strokeWidth={2} />
           </div>
           <h1 className="text-[24px] font-semibold leading-[1.3] text-[var(--text)]">Signal</h1>
-          <p className="mt-2 text-[14px] text-[var(--muted)]">Sign in with phone number</p>
+          <p className="mt-2 text-[14px] text-[var(--muted)]">Sign in to start messaging</p>
         </div>
 
         <div className="space-y-4">
@@ -48,10 +48,10 @@ export function AuthGate() {
             <Input aria-label="Display name" placeholder="Display name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
           </div>
           <div>
-            <Input aria-label="Phone" placeholder="Phone number" value={phone} onChange={(event) => setPhone(event.target.value)} />
+            <Input aria-label="Username" placeholder="Username" value={username} onChange={(event) => setUsername(event.target.value)} />
           </div>
           {error && <p className="text-[13px] text-red-500">{error}</p>}
-          <Button className="w-full" disabled={loading || !displayName.trim() || !phone.trim()}>
+          <Button className="w-full" disabled={loading || !displayName.trim() || !username.trim()}>
             Continue
           </Button>
         </div>

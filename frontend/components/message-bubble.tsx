@@ -80,7 +80,7 @@ export function MessageBubble({ message, previous, conversation, currentUser, re
               {message.reactions.map((reaction) => reaction.emoji).join(" ")}
             </div>
           ) : null}
-          <div className="hidden gap-1 opacity-0 transition duration-150 group-hover:flex group-hover:opacity-100">
+          <div className="flex gap-1 opacity-100 transition duration-150 md:opacity-0 md:group-hover:opacity-100">
             <button
               onClick={() => onReply(message)}
               className="h-6 rounded-full border border-[var(--border)] bg-[var(--sidebar)] px-2 text-[12px] text-[var(--muted)] hover:bg-[var(--hover)]"
