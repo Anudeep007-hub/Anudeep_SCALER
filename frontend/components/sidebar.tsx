@@ -1,13 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { Edit3, LogOut, Search, Settings } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { ConversationItem } from "@/components/conversation-item";
 import { IconButton } from "@/components/icon-button";
 import { Input } from "@/components/input";
 import { useChatStore } from "@/store/chat-store";
+import { NewChatModal } from "@/components/new-chat-modal";
+import { SettingsModal } from "@/components/settings-modal";
 
 export function Sidebar() {
+  const [newChatOpen, setNewChatOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const user = useChatStore((state) => state.user);
   const conversations = useChatStore((state) => state.conversations);
   const activeConversationId = useChatStore((state) => state.activeConversationId);
@@ -36,10 +41,10 @@ export function Sidebar() {
           </div>
         </div>
         <div className="flex items-center">
-          <IconButton label="New chat">
+          <IconButton label="New chat" onClick={() => setNewChatOpen(true)}>
             <Edit3 size={20} strokeWidth={2} />
           </IconButton>
-          <IconButton label="Settings">
+          <IconButton label="Settings" onClick={() => setSettingsOpen(true)}>
             <Settings size={20} strokeWidth={2} />
           </IconButton>
           <IconButton label="Log out" onClick={signOut}>
@@ -72,6 +77,8 @@ export function Sidebar() {
           />
         ))}
       </div>
+      <NewChatModal isOpen={newChatOpen} onClose={() => setNewChatOpen(false)} />
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </aside>
   );
 }

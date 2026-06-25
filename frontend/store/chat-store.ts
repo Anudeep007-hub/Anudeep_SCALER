@@ -19,14 +19,20 @@ type ChatState = {
   sending: boolean;
   toasts: Toast[];
   typingUser: string | null;
+  replyToMessage: Message | null;
   socket: WebSocket | null;
   boot: () => Promise<void>;
   signIn: (payload: { phone: string; displayName: string }) => Promise<void>;
   signOut: () => void;
   setQuery: (query: string) => void;
   selectConversation: (conversationId: number) => Promise<void>;
-  sendMessage: (content: string, replyTo?: number | null) => Promise<void>;
+  sendMessage: (content: string, options?: { attachment_url?: string; message_type?: string; expires_in_seconds?: number }) => Promise<void>;
   react: (messageId: number, emoji: string) => Promise<void>;
+  uploadAttachment: (file: File) => Promise<{ url: string; contentType: string } | null>;
+  createDirectChat: (userId: number) => Promise<void>;
+  createGroup: (name: string, memberIds: number[]) => Promise<void>;
+  searchUsers: (q: string) => Promise<User[]>;
+  setReplyToMessage: (message: Message | null) => void;
   pushToast: (text: string, tone?: Toast["tone"]) => void;
   dismissToast: (id: string) => void;
 };
@@ -54,6 +60,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   sending: false,
   toasts: [],
   typingUser: null,
+  replyToMessage: null,
   socket: null,
 
   async boot() {
@@ -104,12 +111,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
       conversations: [],
       messages: {},
       activeConversationId: null,
+      replyToMessage: null,
       socket: null,
     });
   },
 
   setQuery(query) {
     set({ query });
+  },
+
+  setReplyToMessage(message) {
+    set({ replyToMessage: message });
   },
 
   async selectConversation(conversationId) {
@@ -157,10 +169,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  async sendMessage(content, replyTo) {
+  async sendMessage(content, options) {
     const state = get();
     const conversationId = state.activeConversationId;
-    if (!conversationId || !state.user || !content.trim()) return;
+    const replyTo = state.replyToMessage?.id || null;
+    if (!conversationId || !state.user || (!content.trim() && !options?.attachment_url)) return;
 
     const now = new Date().toISOString();
     const tempId = Date.now() * -1;
@@ -170,7 +183,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       sender_id: state.user.id,
       reply_to: replyTo ?? null,
       content: content.trim(),
-      message_type: "TEXT",
+      attachment_url: options?.attachment_url ?? null,
+      message_type: (options?.message_type as any) ?? "TEXT",
+      expires_at: options?.expires_in_seconds ? new Date(Date.now() + options.expires_in_seconds * 1000).toISOString() : null,
       status: "SENDING",
       created_at: now,
       updated_at: now,
@@ -182,6 +197,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     set((current) => ({
       sending: true,
+      replyToMessage: null,
       messages: {
         ...current.messages,
         [conversationId]: [...(current.messages[conversationId] || []), optimistic],
@@ -189,7 +205,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }));
 
     try {
-      const saved = await api.sendMessage(auth(get()), conversationId, { content, reply_to: replyTo });
+      const saved = await api.sendMessage(auth(get()), conversationId, { 
+        content, 
+        reply_to: replyTo,
+        attachment_url: options?.attachment_url,
+        message_type: options?.message_type,
+        expires_in_seconds: options?.expires_in_seconds
+      });
       const conversations = sortConversations(await api.conversations(auth(get()), get().query));
       set((current) => ({
         sending: false,
@@ -223,6 +245,54 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     } catch (error) {
       get().pushToast(error instanceof Error ? error.message : "Reaction failed", "error");
+    }
+  },
+
+  async createDirectChat(userId) {
+    try {
+      set({ loading: true });
+      const conversation = await api.createDirectChat(auth(get()), userId);
+      const conversations = sortConversations(await api.conversations(auth(get()), get().query));
+      set({ conversations });
+      await get().selectConversation(conversation.id);
+    } catch (error) {
+      get().pushToast(error instanceof Error ? error.message : "Failed to create conversation", "error");
+      set({ loading: false });
+    }
+  },
+
+  async createGroup(name, memberIds) {
+    try {
+      set({ loading: true });
+      const conversation = await api.createGroup(auth(get()), { name, member_ids: memberIds });
+      const conversations = sortConversations(await api.conversations(auth(get()), get().query));
+      set({ conversations });
+      await get().selectConversation(conversation.id);
+    } catch (error) {
+      get().pushToast(error instanceof Error ? error.message : "Failed to create group", "error");
+      set({ loading: false });
+    }
+  },
+
+  async uploadAttachment(file) {
+    try {
+      set({ loading: true });
+      const res = await api.uploadAttachment(auth(get()), file);
+      set({ loading: false });
+      return { url: res.url, contentType: res.content_type };
+    } catch (error) {
+      set({ loading: false });
+      get().pushToast(error instanceof Error ? error.message : "Upload failed", "error");
+      return null;
+    }
+  },
+
+  async searchUsers(q) {
+    try {
+      return await api.searchUsers(auth(get()), q);
+    } catch (error) {
+      get().pushToast(error instanceof Error ? error.message : "Search failed", "error");
+      return [];
     }
   },
 

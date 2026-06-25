@@ -11,6 +11,7 @@ export function MessageList() {
   const messagesByConversation = useChatStore((state) => state.messages);
   const typingUser = useChatStore((state) => state.typingUser);
   const react = useChatStore((state) => state.react);
+  const setReplyToMessage = useChatStore((state) => state.setReplyToMessage);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const conversation = conversations.find((item) => item.id === activeConversationId);
@@ -40,6 +41,7 @@ export function MessageList() {
           currentUser={user}
           replies={replies}
           onReact={react}
+          onReply={setReplyToMessage}
         />
       ))}
       {typingUser ? <div className="px-16 py-2 text-[14px] text-[var(--muted)]">{typingUser} is typing...</div> : null}

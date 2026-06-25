@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, MoreHorizontal, Phone, Search, Video } from "lucide-react";
+import { ArrowLeft, Info, MoreHorizontal, Phone, Search, Video } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { conversationAvatar, conversationTitle } from "@/components/conversation-item";
 import { IconButton } from "@/components/icon-button";
@@ -10,6 +10,7 @@ export function ChatHeader() {
   const user = useChatStore((state) => state.user);
   const conversations = useChatStore((state) => state.conversations);
   const activeConversationId = useChatStore((state) => state.activeConversationId);
+  const selectConversation = useChatStore((state) => state.selectConversation);
   const active = conversations.find((conversation) => conversation.id === activeConversationId);
 
   if (!user || !active) {
@@ -30,6 +31,9 @@ export function ChatHeader() {
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--sidebar)] px-4">
       <div className="flex min-w-0 items-center gap-3">
+        <IconButton label="Back" className="md:hidden" onClick={() => selectConversation(0)}>
+          <ArrowLeft size={20} strokeWidth={2} />
+        </IconButton>
         <Avatar user={avatar} label={title} src={active.avatar_url} size="md" showStatus={avatar?.is_online} />
         <div className="min-w-0">
           <div className="truncate text-[16px] font-semibold leading-[1.3] text-[var(--text)]">{title}</div>

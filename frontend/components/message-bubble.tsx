@@ -11,6 +11,7 @@ type MessageBubbleProps = {
   currentUser: User;
   replies: Map<number, Message>;
   onReact: (messageId: number, emoji: string) => void;
+  onReply: (message: Message) => void;
 };
 
 function statusIcon(status: Message["status"]) {
@@ -19,7 +20,7 @@ function statusIcon(status: Message["status"]) {
   return <CheckCheck size={16} strokeWidth={2} />;
 }
 
-export function MessageBubble({ message, previous, conversation, currentUser, replies, onReact }: MessageBubbleProps) {
+export function MessageBubble({ message, previous, conversation, currentUser, replies, onReact, onReply }: MessageBubbleProps) {
   const own = message.sender_id === currentUser.id;
   const startsGroup = !previous || previous.sender_id !== message.sender_id;
   const sender = message.sender || conversation.participants.find((participant) => participant.user_id === message.sender_id)?.user;
@@ -80,6 +81,12 @@ export function MessageBubble({ message, previous, conversation, currentUser, re
             </div>
           ) : null}
           <div className="hidden gap-1 opacity-0 transition duration-150 group-hover:flex group-hover:opacity-100">
+            <button
+              onClick={() => onReply(message)}
+              className="h-6 rounded-full border border-[var(--border)] bg-[var(--sidebar)] px-2 text-[12px] text-[var(--muted)] hover:bg-[var(--hover)]"
+            >
+              Reply
+            </button>
             {["ok", "heart", "+1"].map((emoji) => (
               <button
                 key={emoji}

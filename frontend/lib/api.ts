@@ -52,12 +52,40 @@ export const api = {
     return request<Message[]>(`/api/conversations/${conversationId}/messages`, {}, auth);
   },
 
-  sendMessage(auth: AuthHeaders, conversationId: number, payload: { content: string; reply_to?: number | null }) {
+  sendMessage(auth: AuthHeaders, conversationId: number, payload: { content: string; reply_to?: number | null; attachment_url?: string | null; message_type?: string; expires_in_seconds?: number }) {
     return request<Message>(
       `/api/conversations/${conversationId}/messages`,
       {
         method: "POST",
-        body: JSON.stringify({ content: payload.content, reply_to: payload.reply_to ?? null }),
+        body: JSON.stringify({ 
+          content: payload.content, 
+          reply_to: payload.reply_to ?? null,
+          attachment_url: payload.attachment_url ?? null,
+          message_type: payload.message_type ?? "TEXT",
+          expires_in_seconds: payload.expires_in_seconds ?? null,
+        }),
+      },
+      auth,
+    );
+  },
+
+  createDirectChat(auth: AuthHeaders, userId: number) {
+    return request<Conversation>(
+      `/api/conversations/direct`,
+      {
+        method: "POST",
+        body: JSON.stringify({ user_id: userId }),
+      },
+      auth,
+    );
+  },
+
+  createGroup(auth: AuthHeaders, payload: { name: string; member_ids: number[] }) {
+    return request<Conversation>(
+      `/api/groups`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
       },
       auth,
     );
@@ -80,6 +108,24 @@ export const api = {
 
   searchUsers(auth: AuthHeaders, q: string) {
     return request<User[]>(`/api/users/search?q=${encodeURIComponent(q)}`, {}, auth);
+  },
+
+  async uploadAttachment(auth: AuthHeaders, file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const headers = new Headers();
+    if (auth.token) {
+      headers.set("Authorization", `Bearer ${auth.token}`);
+    } else if (auth.userId) {
+      headers.set("X-User-Id", String(auth.userId));
+    }
+    const res = await fetch(`${API_URL}/api/uploads`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    if (!res.ok) throw new Error("Upload failed");
+    return res.json() as Promise<{ id: number; url: string; file_name: string; content_type: string }>;
   },
 };
 
