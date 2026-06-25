@@ -106,7 +106,6 @@ export function GroupInfoModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                   <div className="text-[15px] text-[var(--text)] font-medium">
                     {p.user_id === user.id ? "You" : p.user?.display_name}
                   </div>
-                  <div className="text-[13px] text-[var(--muted)]">{p.user?.phone}</div>
                 </div>
               </div>
               {p.user_id !== user.id && (

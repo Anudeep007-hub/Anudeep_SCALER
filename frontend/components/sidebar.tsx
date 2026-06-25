@@ -34,10 +34,9 @@ export function Sidebar() {
     <aside className="flex h-dvh w-full flex-col border-r border-[var(--border)] bg-[var(--sidebar)] md:w-[320px] md:shrink-0">
       <header className="flex h-16 shrink-0 items-center justify-between px-4">
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar user={user} size="md" showStatus />
+          <Avatar user={user} size="md" />
           <div className="min-w-0">
             <div className="truncate text-[16px] font-semibold leading-[1.3] text-[var(--text)]">{user.display_name}</div>
-            <div className="truncate text-[12px] text-[var(--muted)]">{user.phone}</div>
           </div>
         </div>
         <div className="flex items-center">

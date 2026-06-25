@@ -128,7 +128,6 @@ export function NewChatModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                     <div className="text-[16px] font-semibold leading-[1.3] text-[var(--text)]">
                       {user.display_name}
                     </div>
-                    <div className="text-[14px] text-[var(--muted)]">{user.phone}</div>
                   </div>
                 </div>
                 {mode === "group" && (

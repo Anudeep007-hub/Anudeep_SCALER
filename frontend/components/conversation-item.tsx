@@ -16,9 +16,16 @@ export function conversationTitle(conversation: Conversation, currentUserId?: nu
   return conversation.participants.find((participant) => participant.user_id !== currentUserId)?.user.display_name || "Signal User";
 }
 
-export function conversationAvatar(conversation: Conversation, currentUserId?: number) {
-  if (conversation.type === "GROUP") return null;
-  return conversation.participants.find((participant) => participant.user_id !== currentUserId)?.user || null;
+export function conversationAvatar(conversation: Conversation, userId?: number): User | undefined {
+  if (conversation.type === "DIRECT") {
+    const other = conversation.participants.find((p) => p.user_id !== userId);
+    if (other) {
+      return {
+        ...other.user,
+        is_online: false,
+      };
+    }
+  }
 }
 
 export function ConversationItem({ conversation, currentUser, active, onClick }: ConversationItemProps) {
