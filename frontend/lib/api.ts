@@ -122,6 +122,10 @@ export const api = {
     return request<User[]>(`/api/users/search?q=${encodeURIComponent(q)}`, {}, auth);
   },
 
+  deleteMessage(auth: AuthHeaders, messageId: number) {
+    return request<{ message: string }>(`/api/messages/${messageId}`, { method: "DELETE" }, auth);
+  },
+
   async uploadAttachment(auth: AuthHeaders, file: File) {
     const formData = new FormData();
     formData.append("file", file);
@@ -151,4 +155,9 @@ export function socketUrl(conversationId: number) {
 export function formatClock(value?: string | null) {
   if (!value) return "";
   return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
+export function formatDate(value?: string | null) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
 }

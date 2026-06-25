@@ -1,5 +1,6 @@
+import { useState } from "react";
 import clsx from "clsx";
-import { Check, CheckCheck, Clock, Reply as ReplyIcon } from "lucide-react";
+import { Check, CheckCheck, Clock, Reply as ReplyIcon, Trash2, Info } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { formatClock } from "@/lib/api";
 import type { Conversation, Message, User } from "@/types";
@@ -12,6 +13,8 @@ type MessageBubbleProps = {
   replies: Map<number, Message>;
   onReact: (messageId: number, emoji: string) => void;
   onReply: (message: Message) => void;
+  onDelete: (messageId: number) => void;
+  onInfo: (message: Message) => void;
 };
 
 function StatusIcon({ status }: { status: Message["status"] }) {
@@ -29,7 +32,8 @@ function StatusIcon({ status }: { status: Message["status"] }) {
   }
 }
 
-export function MessageBubble({ message, previous, conversation, currentUser, replies, onReact, onReply }: MessageBubbleProps) {
+export function MessageBubble({ message, previous, conversation, currentUser, replies, onReact, onReply, onDelete, onInfo }: MessageBubbleProps) {
+  const [showActions, setShowActions] = useState(false);
   const own = message.sender_id === currentUser.id;
   const startsGroup = !previous || previous.sender_id !== message.sender_id;
   const sender = message.sender || conversation.participants.find((participant) => participant.user_id === message.sender_id)?.user;
@@ -55,22 +59,28 @@ export function MessageBubble({ message, previous, conversation, currentUser, re
 
         {/* Reply preview block */}
         {reply ? (
-          <a
-            href={`#message-${reply.id}`}
+          <button
+            onClick={() => {
+              const el = document.getElementById(`message-${reply.id}`);
+              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
             className={clsx(
               "mb-1 flex w-full items-center gap-2 rounded-t-[18px] rounded-b-[4px] px-4 py-2 text-[13px] no-underline",
               own ? "bg-[#2a5697] text-white/90" : "bg-[var(--hover)] text-[var(--text)]",
             )}
           >
             <div className={clsx("w-1 self-stretch rounded-full", own ? "bg-white/50" : "bg-[var(--primary)]")} />
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 text-left">
               <div className="truncate text-[12px] font-semibold">{reply.sender?.display_name || "Reply"}</div>
-              <div className="truncate">{reply.content}</div>
+              <div className="truncate">
+                {reply.content || (reply.message_type === "IMAGE" ? "📷 Photo" : reply.message_type === "FILE" ? "📎 File" : "Message")}
+              </div>
             </div>
-          </a>
+          </button>
         ) : null}
 
         <div
+          onClick={() => setShowActions(!showActions)}
           className={clsx(
             "relative px-3 py-2 text-[15px] leading-[1.45] transition duration-150",
             reply ? "rounded-b-[18px] rounded-t-[4px]" : "rounded-[18px]",
@@ -109,13 +119,27 @@ export function MessageBubble({ message, previous, conversation, currentUser, re
               {message.reactions.map((reaction) => reaction.emoji).join(" ")}
             </div>
           ) : null}
-          <div className="flex gap-1 opacity-0 transition duration-150 group-hover:opacity-100">
+          <div className={clsx("flex gap-1 transition duration-150", showActions ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
             <button
               onClick={() => onReply(message)}
               className="flex h-7 items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--sidebar)] px-2 text-[12px] text-[var(--muted)] hover:bg-[var(--hover)]"
             >
               <ReplyIcon size={12} strokeWidth={2} /> Reply
             </button>
+            <button
+              onClick={() => onInfo(message)}
+              className="flex h-7 items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--sidebar)] px-2 text-[12px] text-[var(--muted)] hover:bg-[var(--hover)]"
+            >
+              <Info size={12} strokeWidth={2} /> Info
+            </button>
+            {own && (
+              <button
+                onClick={() => onDelete(message.id)}
+                className="flex h-7 items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--sidebar)] px-2 text-[12px] text-red-500 hover:bg-[var(--hover)]"
+              >
+                <Trash2 size={12} strokeWidth={2} />
+              </button>
+            )}
             {["👍", "❤️", "😂", "😮", "😢"].map((emoji) => (
               <button
                 key={emoji}

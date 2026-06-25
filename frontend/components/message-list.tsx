@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { MessageBubble } from "@/components/message-bubble";
 import { useChatStore } from "@/store/chat-store";
+import { MessageInfoModal } from "@/components/message-info-modal";
+import type { Message } from "@/types";
 
 function TypingBubble({ name }: { name: string }) {
   return (
@@ -26,8 +28,10 @@ export function MessageList() {
   const messagesByConversation = useChatStore((state) => state.messages);
   const typingUser = useChatStore((state) => state.typingUser);
   const react = useChatStore((state) => state.react);
+  const deleteMessage = useChatStore((state) => state.deleteMessage);
   const setReplyToMessage = useChatStore((state) => state.setReplyToMessage);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const [infoMessage, setInfoMessage] = useState<Message | null>(null);
 
   const conversation = conversations.find((item) => item.id === activeConversationId);
   const messages = activeConversationId ? messagesByConversation[activeConversationId] || [] : [];
@@ -62,10 +66,13 @@ export function MessageList() {
           replies={replies}
           onReact={react}
           onReply={setReplyToMessage}
+          onDelete={deleteMessage}
+          onInfo={setInfoMessage}
         />
       ))}
       {typingUser ? <TypingBubble name={typingUser} /> : null}
       <div ref={bottomRef} />
+      <MessageInfoModal message={infoMessage} conversation={conversation} onClose={() => setInfoMessage(null)} currentUser={user} />
     </div>
   );
 }

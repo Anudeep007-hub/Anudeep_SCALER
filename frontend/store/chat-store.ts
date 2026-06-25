@@ -35,6 +35,7 @@ type ChatState = {
   addGroupMember: (conversationId: number, userId: number) => Promise<void>;
   removeGroupMember: (conversationId: number, userId: number) => Promise<void>;
   searchUsers: (q: string) => Promise<User[]>;
+  deleteMessage: (messageId: number) => Promise<void>;
   setReplyToMessage: (message: Message | null) => void;
   sendTyping: (state: "started" | "stopped") => void;
   pushToast: (text: string, tone?: Toast["tone"]) => void;
@@ -164,7 +165,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
               }
               return;
             }
+            if (packet.type === "message.deleted") {
+              const latest = await api.messages(auth(get()), socketConversationId);
+              const freshConversations = sortConversations(await api.conversations(auth(get()), get().query));
+              set((current) => ({
+                messages: { ...current.messages, [socketConversationId]: latest },
+                conversations: freshConversations,
+              }));
+              return;
+            }
             // Refresh messages and conversations for any other event
+            if (packet.type === "message.created") {
+              await api.markRead(auth(get()), socketConversationId).catch(() => undefined);
+            }
             const latest = await api.messages(auth(get()), socketConversationId);
             const freshConversations = sortConversations(await api.conversations(auth(get()), get().query));
             set((current) => ({
@@ -344,6 +357,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } catch (error) {
       get().pushToast(error instanceof Error ? error.message : "Search failed", "error");
       return [];
+    }
+  },
+
+  async deleteMessage(messageId) {
+    const state = get();
+    const conversationId = state.activeConversationId;
+    if (!conversationId) return;
+    try {
+      await api.deleteMessage(auth(state), messageId);
+      // Optimistically remove it from state
+      set((current) => ({
+        messages: {
+          ...current.messages,
+          [conversationId]: (current.messages[conversationId] || []).filter(m => m.id !== messageId)
+        }
+      }));
+    } catch (error) {
+      get().pushToast(error instanceof Error ? error.message : "Failed to delete message", "error");
     }
   },
 

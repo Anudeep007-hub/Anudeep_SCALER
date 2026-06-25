@@ -68,7 +68,7 @@ export function MessageInput() {
               Replying to {replyToMessage.sender?.display_name || "message"}
             </span>
             <span className="block truncate text-[13px] text-[var(--text)]">
-              {replyToMessage.content}
+              {replyToMessage.content || (replyToMessage.message_type === "IMAGE" ? "📷 Photo" : replyToMessage.message_type === "FILE" ? "📎 File" : "Message")}
             </span>
           </div>
           <IconButton label="Cancel reply" onClick={() => setReplyToMessage(null)}>
