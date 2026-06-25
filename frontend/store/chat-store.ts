@@ -147,20 +147,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
           try {
             const packet = JSON.parse(event.data);
             if (packet.type === "typing") {
-              const active = get().conversations.find((item) => item.id === socketConversationId);
-              const name = active ? otherParticipant(active, get().user?.id)?.display_name || "Someone" : "Someone";
-              set({ typingUser: packet.payload?.state === "stopped" ? null : name });
+              // Ignore own typing events
+              const typingUserId = packet.payload?.user_id || packet.user_id;
+              if (typingUserId === get().user?.id) return;
+              const typingState = packet.payload?.state || packet.state;
+              if (typingState === "stopped") {
+                set({ typingUser: null });
+              } else {
+                const active = get().conversations.find((item) => item.id === socketConversationId);
+                const name = active ? otherParticipant(active, get().user?.id)?.display_name || "Someone" : "Someone";
+                set({ typingUser: name });
+                // Auto-clear typing after 4 seconds
+                setTimeout(() => {
+                  if (get().typingUser) set({ typingUser: null });
+                }, 4000);
+              }
               return;
             }
-            // Refresh messages and conversations for any event
+            // Refresh messages and conversations for any other event
             const latest = await api.messages(auth(get()), socketConversationId);
             const freshConversations = sortConversations(await api.conversations(auth(get()), get().query));
             set((current) => ({
               messages: { ...current.messages, [socketConversationId]: latest },
               conversations: freshConversations,
             }));
-            // Also mark as read when we receive new messages
-            await api.markRead(auth(get()), socketConversationId).catch(() => undefined);
           } catch {
             // ignore parse errors
           }
@@ -340,7 +350,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   sendTyping(state) {
     const socket = get().socket;
     if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: "typing", payload: { state, user_id: get().user?.id } }));
+      // Backend expects { type: "typing", state: "started"|"stopped", user_id: N }
+      socket.send(JSON.stringify({ type: "typing", state, user_id: get().user?.id }));
     }
   },
 

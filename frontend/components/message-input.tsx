@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useState, useRef, ChangeEvent, useEffect } from "react";
-import { ImagePlus, Mic, Plus, Send, Smile, X, Timer } from "lucide-react";
+import { FormEvent, KeyboardEvent, useState, useRef, useEffect } from "react";
+import { Send, Smile, X, Timer } from "lucide-react";
 import { IconButton } from "@/components/icon-button";
 import { useChatStore } from "@/store/chat-store";
 import clsx from "clsx";
@@ -13,18 +13,15 @@ export function MessageInput() {
   const [text, setText] = useState("");
   const [expiryIndex, setExpiryIndex] = useState(0);
   const [showExpiryMenu, setShowExpiryMenu] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const activeConversationId = useChatStore((state) => state.activeConversationId);
   const sending = useChatStore((state) => state.sending);
   const sendMessage = useChatStore((state) => state.sendMessage);
   const replyToMessage = useChatStore((state) => state.replyToMessage);
   const setReplyToMessage = useChatStore((state) => state.setReplyToMessage);
-  const uploadAttachment = useChatStore((state) => state.uploadAttachment);
   const sendTyping = useChatStore((state) => state.sendTyping);
-
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Focus textarea when reply is set
   useEffect(() => {
@@ -46,6 +43,8 @@ export function MessageInput() {
     const value = text.trim();
     if (!value || !activeConversationId) return;
     setText("");
+    sendTyping("stopped");
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     await sendMessage(value, {
       expires_in_seconds: EXPIRY_OPTIONS[expiryIndex] || undefined
     });
@@ -55,24 +54,6 @@ export function MessageInput() {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       void submit();
-    }
-  }
-
-  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file || !activeConversationId) return;
-    
-    const isImage = file.type.startsWith("image/");
-    const res = await uploadAttachment(file);
-    if (res) {
-      await sendMessage(isImage ? "📷 Photo" : `📎 ${file.name}`, {
-        attachment_url: res.url,
-        message_type: isImage ? "IMAGE" : "FILE",
-        expires_in_seconds: EXPIRY_OPTIONS[expiryIndex] || undefined
-      });
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
     }
   }
 
@@ -98,7 +79,7 @@ export function MessageInput() {
 
       {/* Disappearing message menu */}
       {showExpiryMenu && (
-        <div className="absolute bottom-20 left-20 z-50 rounded-[12px] border border-[var(--border)] bg-[var(--sidebar)] p-2 shadow-lg animate-slide-up">
+        <div className="absolute bottom-20 left-4 z-50 rounded-[12px] border border-[var(--border)] bg-[var(--sidebar)] p-2 shadow-lg animate-slide-up">
           <div className="mb-1 px-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">Disappearing messages</div>
           {EXPIRY_OPTIONS.map((opt, i) => (
             <button
@@ -116,24 +97,6 @@ export function MessageInput() {
       )}
 
       <form onSubmit={submit} className="flex h-[72px] items-center gap-2 px-4">
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          onChange={handleFileChange} 
-          className="hidden" 
-          accept="image/*,application/pdf,.doc,.docx,.txt,.zip" 
-        />
-        <IconButton label="Add attachment" disabled={!activeConversationId} onClick={() => fileInputRef.current?.click()}>
-          <Plus size={20} strokeWidth={2} />
-        </IconButton>
-        <IconButton label="Image" disabled={!activeConversationId} onClick={() => {
-          if (fileInputRef.current) {
-            fileInputRef.current.accept = "image/*";
-            fileInputRef.current.click();
-          }
-        }}>
-          <ImagePlus size={20} strokeWidth={2} />
-        </IconButton>
         <button
           type="button"
           onClick={() => setShowExpiryMenu(!showExpiryMenu)}
@@ -162,15 +125,9 @@ export function MessageInput() {
             <Smile size={20} strokeWidth={2} />
           </IconButton>
         </div>
-        {text.trim() ? (
-          <IconButton label="Send" type="submit" disabled={sending || !activeConversationId} className="bg-[var(--primary)] text-white hover:bg-[var(--primary)] hover:opacity-90">
-            <Send size={20} strokeWidth={2} />
-          </IconButton>
-        ) : (
-          <IconButton label="Voice message" disabled={!activeConversationId}>
-            <Mic size={20} strokeWidth={2} />
-          </IconButton>
-        )}
+        <IconButton label="Send" type="submit" disabled={sending || !activeConversationId || !text.trim()} className={clsx(text.trim() ? "bg-[var(--primary)] text-white hover:opacity-90" : "text-[var(--muted)]")}>
+          <Send size={20} strokeWidth={2} />
+        </IconButton>
       </form>
     </div>
   );
