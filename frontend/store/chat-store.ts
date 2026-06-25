@@ -36,6 +36,7 @@ type ChatState = {
   removeGroupMember: (conversationId: number, userId: number) => Promise<void>;
   searchUsers: (q: string) => Promise<User[]>;
   setReplyToMessage: (message: Message | null) => void;
+  sendTyping: (state: "started" | "stopped") => void;
   pushToast: (text: string, tone?: Toast["tone"]) => void;
   dismissToast: (id: string) => void;
 };
@@ -143,19 +144,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (socket && nextId) {
         const socketConversationId = nextId;
         socket.onmessage = async (event) => {
-          const packet = JSON.parse(event.data);
-          if (packet.type === "typing") {
-            const active = get().conversations.find((item) => item.id === socketConversationId);
-            const name = active ? otherParticipant(active, get().user?.id)?.display_name || "Someone" : "Someone";
-            set({ typingUser: packet.payload.state === "stopped" ? null : name });
-            return;
+          try {
+            const packet = JSON.parse(event.data);
+            if (packet.type === "typing") {
+              const active = get().conversations.find((item) => item.id === socketConversationId);
+              const name = active ? otherParticipant(active, get().user?.id)?.display_name || "Someone" : "Someone";
+              set({ typingUser: packet.payload?.state === "stopped" ? null : name });
+              return;
+            }
+            // Refresh messages and conversations for any event
+            const latest = await api.messages(auth(get()), socketConversationId);
+            const freshConversations = sortConversations(await api.conversations(auth(get()), get().query));
+            set((current) => ({
+              messages: { ...current.messages, [socketConversationId]: latest },
+              conversations: freshConversations,
+            }));
+            // Also mark as read when we receive new messages
+            await api.markRead(auth(get()), socketConversationId).catch(() => undefined);
+          } catch {
+            // ignore parse errors
           }
-          const latest = await api.messages(auth(get()), socketConversationId);
-          const freshConversations = sortConversations(await api.conversations(auth(get()), get().query));
-          set((current) => ({
-            messages: { ...current.messages, [socketConversationId]: latest },
-            conversations: freshConversations,
-          }));
         };
       }
 
@@ -326,6 +334,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } catch (error) {
       get().pushToast(error instanceof Error ? error.message : "Search failed", "error");
       return [];
+    }
+  },
+
+  sendTyping(state) {
+    const socket = get().socket;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "typing", payload: { state, user_id: get().user?.id } }));
     }
   },
 

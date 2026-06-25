@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Check, CheckCheck } from "lucide-react";
+import { Check, CheckCheck, Clock, Reply as ReplyIcon } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { formatClock } from "@/lib/api";
 import type { Conversation, Message, User } from "@/types";
@@ -14,10 +14,19 @@ type MessageBubbleProps = {
   onReply: (message: Message) => void;
 };
 
-function statusIcon(status: Message["status"]) {
-  if (status === "SENDING") return <span className="text-[12px]">Sending</span>;
-  if (status === "SENT") return <Check size={16} strokeWidth={2} />;
-  return <CheckCheck size={16} strokeWidth={2} />;
+function StatusIcon({ status }: { status: Message["status"] }) {
+  switch (status) {
+    case "SENDING":
+      return <Clock size={14} strokeWidth={2} className="text-white/60" />;
+    case "SENT":
+      return <Check size={14} strokeWidth={2} />;
+    case "DELIVERED":
+      return <CheckCheck size={14} strokeWidth={2} />;
+    case "READ":
+      return <CheckCheck size={14} strokeWidth={2} className="text-[#53bdeb]" />;
+    default:
+      return <Check size={14} strokeWidth={2} />;
+  }
 }
 
 export function MessageBubble({ message, previous, conversation, currentUser, replies, onReact, onReply }: MessageBubbleProps) {
@@ -31,67 +40,87 @@ export function MessageBubble({ message, previous, conversation, currentUser, re
       id={`message-${message.id}`}
       className={clsx(
         "group flex gap-2 px-6",
-        startsGroup ? "mt-4" : "mt-2",
+        startsGroup ? "mt-4" : "mt-1",
         own ? "justify-end" : "justify-start",
       )}
     >
       {!own ? (
-        <div className="w-9 pt-5">{startsGroup ? <Avatar user={sender} size="sm" /> : null}</div>
+        <div className="w-8 pt-5">{startsGroup ? <Avatar user={sender} size="sm" /> : null}</div>
       ) : null}
 
       <div className={clsx("flex max-w-[70%] flex-col", own ? "items-end" : "items-start")}>
         {conversation.type === "GROUP" && !own && startsGroup ? (
-          <div className="mb-1 px-1 text-[12px] font-semibold text-[var(--muted)]">{sender?.display_name || "Signal User"}</div>
+          <div className="mb-1 px-1 text-[12px] font-semibold text-[var(--primary)]">{sender?.display_name || "Signal User"}</div>
+        ) : null}
+
+        {/* Reply preview block */}
+        {reply ? (
+          <a
+            href={`#message-${reply.id}`}
+            className={clsx(
+              "mb-1 flex w-full items-center gap-2 rounded-t-[18px] rounded-b-[4px] px-4 py-2 text-[13px] no-underline",
+              own ? "bg-[#2a5697] text-white/90" : "bg-[var(--hover)] text-[var(--text)]",
+            )}
+          >
+            <div className={clsx("w-1 self-stretch rounded-full", own ? "bg-white/50" : "bg-[var(--primary)]")} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[12px] font-semibold">{reply.sender?.display_name || "Reply"}</div>
+              <div className="truncate">{reply.content}</div>
+            </div>
+          </a>
         ) : null}
 
         <div
           className={clsx(
-            "relative rounded-[18px] px-4 py-3 text-[15px] leading-[1.45] transition duration-150",
+            "relative px-3 py-2 text-[15px] leading-[1.45] transition duration-150",
+            reply ? "rounded-b-[18px] rounded-t-[4px]" : "rounded-[18px]",
             own ? "bg-[var(--own-message)] text-[var(--own-text)]" : "bg-[var(--received-bubble)] text-[var(--received-text)]",
-            message.optimistic && "opacity-80",
+            message.optimistic && "opacity-70",
           )}
         >
-          {reply ? (
-            <a
-              href={`#message-${reply.id}`}
-              className={clsx(
-                "mb-2 block rounded-[12px] border-l-2 px-3 py-2 text-[12px]",
-                own ? "border-white/70 bg-white/10 text-white/90" : "border-[var(--primary)] bg-white/70 text-[var(--muted)]",
-              )}
-            >
-              <span className="block truncate font-semibold">{reply.sender?.display_name || "Reply"}</span>
-              <span className="block truncate">{reply.content}</span>
-            </a>
-          ) : null}
-
+          {/* Image attachment */}
           {message.attachment_url && message.message_type === "IMAGE" ? (
             <img src={message.attachment_url} alt="" className="mb-2 max-h-[280px] rounded-[12px] object-cover" />
           ) : null}
-          <span className="whitespace-pre-wrap break-words">{message.content}</span>
-          <span className={clsx("ml-3 inline-flex translate-y-1 items-center gap-1 text-[12px]", own ? "text-white/80" : "text-[var(--muted)]")}>
+
+          {/* File attachment */}
+          {message.attachment_url && message.message_type === "FILE" ? (
+            <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="mb-2 flex items-center gap-2 rounded-[8px] bg-white/10 p-2 text-[13px] underline">
+              📎 {message.content}
+            </a>
+          ) : null}
+
+          {/* Message text */}
+          {message.message_type !== "FILE" && (
+            <span className="whitespace-pre-wrap break-words">{message.content}</span>
+          )}
+
+          {/* Timestamp + status */}
+          <span className={clsx("ml-3 inline-flex translate-y-[3px] items-center gap-1 text-[11px]", own ? "text-white/70" : "text-[var(--muted)]")}>
             {formatClock(message.created_at)}
-            {own ? statusIcon(message.status) : null}
+            {own ? <StatusIcon status={message.status} /> : null}
           </span>
         </div>
 
-        <div className={clsx("mt-1 flex min-h-6 items-center gap-1", own ? "flex-row-reverse" : "flex-row")}>
+        {/* Reactions & actions */}
+        <div className={clsx("mt-1 flex items-center gap-1", own ? "flex-row-reverse" : "flex-row")}>
           {message.reactions.length ? (
-            <div className="rounded-full border border-[var(--border)] bg-[var(--sidebar)] px-2 py-0.5 text-[12px] shadow-sm">
+            <div className="rounded-full border border-[var(--border)] bg-[var(--sidebar)] px-2 py-0.5 text-[13px] shadow-sm">
               {message.reactions.map((reaction) => reaction.emoji).join(" ")}
             </div>
           ) : null}
-          <div className="flex gap-1 opacity-100 transition duration-150 md:opacity-0 md:group-hover:opacity-100">
+          <div className="flex gap-1 opacity-0 transition duration-150 group-hover:opacity-100">
             <button
               onClick={() => onReply(message)}
-              className="h-6 rounded-full border border-[var(--border)] bg-[var(--sidebar)] px-2 text-[12px] text-[var(--muted)] hover:bg-[var(--hover)]"
+              className="flex h-7 items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--sidebar)] px-2 text-[12px] text-[var(--muted)] hover:bg-[var(--hover)]"
             >
-              Reply
+              <ReplyIcon size={12} strokeWidth={2} /> Reply
             </button>
-            {["ok", "heart", "+1"].map((emoji) => (
+            {["👍", "❤️", "😂", "😮", "😢"].map((emoji) => (
               <button
                 key={emoji}
                 onClick={() => onReact(message.id, emoji)}
-                className="h-6 rounded-full border border-[var(--border)] bg-[var(--sidebar)] px-2 text-[12px] text-[var(--muted)] hover:bg-[var(--hover)]"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--sidebar)] text-[14px] hover:bg-[var(--hover)] hover:scale-125 transition"
               >
                 {emoji}
               </button>

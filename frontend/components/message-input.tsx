@@ -1,18 +1,20 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useState, useRef, ChangeEvent } from "react";
+import { FormEvent, KeyboardEvent, useState, useRef, ChangeEvent, useEffect } from "react";
 import { ImagePlus, Mic, Plus, Send, Smile, X, Timer } from "lucide-react";
 import { IconButton } from "@/components/icon-button";
 import { useChatStore } from "@/store/chat-store";
 import clsx from "clsx";
 
 const EXPIRY_OPTIONS = [null, 10, 60 * 60, 60 * 60 * 24]; // Off, 10s, 1h, 1d
-const EXPIRY_LABELS = ["Off", "10s", "1h", "1d"];
+const EXPIRY_LABELS = ["Off", "10 sec", "1 hour", "1 day"];
 
 export function MessageInput() {
   const [text, setText] = useState("");
   const [expiryIndex, setExpiryIndex] = useState(0);
+  const [showExpiryMenu, setShowExpiryMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   
   const activeConversationId = useChatStore((state) => state.activeConversationId);
   const sending = useChatStore((state) => state.sending);
@@ -20,6 +22,24 @@ export function MessageInput() {
   const replyToMessage = useChatStore((state) => state.replyToMessage);
   const setReplyToMessage = useChatStore((state) => state.setReplyToMessage);
   const uploadAttachment = useChatStore((state) => state.uploadAttachment);
+  const sendTyping = useChatStore((state) => state.sendTyping);
+
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Focus textarea when reply is set
+  useEffect(() => {
+    if (replyToMessage) {
+      textareaRef.current?.focus();
+    }
+  }, [replyToMessage]);
+
+  function handleTextChange(value: string) {
+    setText(value);
+    // Send typing indicator
+    sendTyping("started");
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => sendTyping("stopped"), 2000);
+  }
 
   async function submit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
@@ -45,7 +65,7 @@ export function MessageInput() {
     const isImage = file.type.startsWith("image/");
     const res = await uploadAttachment(file);
     if (res) {
-      await sendMessage(isImage ? "Image" : file.name, {
+      await sendMessage(isImage ? "📷 Photo" : `📎 ${file.name}`, {
         attachment_url: res.url,
         message_type: isImage ? "IMAGE" : "FILE",
         expires_in_seconds: EXPIRY_OPTIONS[expiryIndex] || undefined
@@ -58,24 +78,50 @@ export function MessageInput() {
 
   return (
     <div className="flex shrink-0 flex-col border-t border-[var(--border)] bg-[var(--sidebar)]">
+      {/* Reply preview bar */}
       {replyToMessage ? (
-        <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--search)] px-4 py-2">
-          <div className="min-w-0 border-l-2 border-[var(--primary)] pl-2">
-            <span className="block text-[12px] font-semibold text-[var(--primary)]">Replying to {replyToMessage.sender?.display_name || "Someone"}</span>
-            <span className="block truncate text-[13px] text-[var(--text)]">{replyToMessage.content}</span>
+        <div className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--search)] px-4 py-2 animate-fade-in">
+          <div className="w-1 self-stretch rounded-full bg-[var(--primary)]" />
+          <div className="min-w-0 flex-1">
+            <span className="block text-[12px] font-semibold text-[var(--primary)]">
+              Replying to {replyToMessage.sender?.display_name || "message"}
+            </span>
+            <span className="block truncate text-[13px] text-[var(--text)]">
+              {replyToMessage.content}
+            </span>
           </div>
           <IconButton label="Cancel reply" onClick={() => setReplyToMessage(null)}>
             <X size={16} strokeWidth={2} />
           </IconButton>
         </div>
       ) : null}
+
+      {/* Disappearing message menu */}
+      {showExpiryMenu && (
+        <div className="absolute bottom-20 left-20 z-50 rounded-[12px] border border-[var(--border)] bg-[var(--sidebar)] p-2 shadow-lg animate-slide-up">
+          <div className="mb-1 px-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">Disappearing messages</div>
+          {EXPIRY_OPTIONS.map((opt, i) => (
+            <button
+              key={i}
+              onClick={() => { setExpiryIndex(i); setShowExpiryMenu(false); }}
+              className={clsx(
+                "flex w-full items-center rounded-[8px] px-3 py-2 text-[14px] text-left transition-colors",
+                expiryIndex === i ? "bg-[var(--primary)] text-white" : "text-[var(--text)] hover:bg-[var(--hover)]"
+              )}
+            >
+              {EXPIRY_LABELS[i]}
+            </button>
+          ))}
+        </div>
+      )}
+
       <form onSubmit={submit} className="flex h-[72px] items-center gap-2 px-4">
         <input 
           type="file" 
           ref={fileInputRef} 
           onChange={handleFileChange} 
           className="hidden" 
-          accept="image/*,application/pdf,.doc,.docx" 
+          accept="image/*,application/pdf,.doc,.docx,.txt,.zip" 
         />
         <IconButton label="Add attachment" disabled={!activeConversationId} onClick={() => fileInputRef.current?.click()}>
           <Plus size={20} strokeWidth={2} />
@@ -90,22 +136,22 @@ export function MessageInput() {
         </IconButton>
         <button
           type="button"
-          onClick={() => setExpiryIndex((i) => (i + 1) % EXPIRY_OPTIONS.length)}
+          onClick={() => setShowExpiryMenu(!showExpiryMenu)}
           disabled={!activeConversationId}
           className={clsx(
-            "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+            "relative flex h-10 w-10 items-center justify-center rounded-full transition-colors",
             EXPIRY_OPTIONS[expiryIndex] ? "bg-[var(--primary)] text-white" : "text-[var(--muted)] hover:bg-[var(--hover)]"
           )}
           title={`Disappearing messages: ${EXPIRY_LABELS[expiryIndex]}`}
         >
           <Timer size={20} strokeWidth={2} />
-          {EXPIRY_OPTIONS[expiryIndex] && <span className="absolute mt-6 text-[10px] font-bold">{EXPIRY_LABELS[expiryIndex]}</span>}
         </button>
-        <div className="flex h-12 min-w-0 flex-1 items-center rounded-[14px] border border-transparent bg-[var(--search)] px-3 focus-within:border-[var(--primary)] focus-within:bg-[var(--sidebar)]">
+        <div className="flex h-12 min-w-0 flex-1 items-center rounded-[24px] border border-transparent bg-[var(--search)] px-3 focus-within:border-[var(--primary)] focus-within:bg-[var(--sidebar)]">
           <textarea
+            ref={textareaRef}
             aria-label="Message"
             value={text}
-            onChange={(event) => setText(event.target.value)}
+            onChange={(event) => handleTextChange(event.target.value)}
             onKeyDown={keyDown}
             disabled={!activeConversationId}
             rows={1}

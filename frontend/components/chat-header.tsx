@@ -13,6 +13,7 @@ export function ChatHeader() {
   const conversations = useChatStore((state) => state.conversations);
   const activeConversationId = useChatStore((state) => state.activeConversationId);
   const selectConversation = useChatStore((state) => state.selectConversation);
+  const pushToast = useChatStore((state) => state.pushToast);
   const active = conversations.find((conversation) => conversation.id === activeConversationId);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
 
@@ -34,25 +35,27 @@ export function ChatHeader() {
           <IconButton label="Back" className="md:hidden" onClick={() => selectConversation(0)}>
             <ArrowLeft size={20} strokeWidth={2} />
           </IconButton>
-          <Avatar user={avatar} label={title} src={active.avatar_url} size="md" showStatus={avatar?.is_online} />
+          <Avatar user={avatar} label={title} src={active.avatar_url} size="md" />
           <div className="min-w-0">
             <div className="truncate text-[16px] font-semibold leading-[1.3] text-[var(--text)]">{title}</div>
-            {active.type === "DIRECT" && avatar?.is_online && <div className="text-[13px] text-[var(--primary)]">Online</div>}
             {active.type === "GROUP" && (
               <div className="truncate text-[13px] text-[var(--muted)]">
-                {active.participants.map((p) => p.user?.display_name).join(", ")}
+                {active.participants.length} members
               </div>
+            )}
+            {active.type === "DIRECT" && (
+              <div className="text-[12px] text-[var(--muted)]">Signal Contact</div>
             )}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2 text-[var(--muted)]">
-          <IconButton label="Video call">
+        <div className="flex shrink-0 items-center gap-1 text-[var(--muted)]">
+          <IconButton label="Video call" onClick={() => pushToast("Video calls — Coming Soon", "neutral")}>
             <Video size={20} strokeWidth={2} />
           </IconButton>
-          <IconButton label="Voice call">
+          <IconButton label="Voice call" onClick={() => pushToast("Voice calls — Coming Soon", "neutral")}>
             <Phone size={20} strokeWidth={2} />
           </IconButton>
-          <IconButton label="Search">
+          <IconButton label="Search" onClick={() => pushToast("In-chat search — Coming Soon", "neutral")}>
             <Search size={20} strokeWidth={2} />
           </IconButton>
           {active.type === "GROUP" && (
@@ -60,7 +63,7 @@ export function ChatHeader() {
               <Info size={20} strokeWidth={2} />
             </IconButton>
           )}
-          <IconButton label="More options">
+          <IconButton label="More options" onClick={() => pushToast("More options — Coming Soon", "neutral")}>
             <MoreHorizontal size={20} strokeWidth={2} />
           </IconButton>
         </div>
